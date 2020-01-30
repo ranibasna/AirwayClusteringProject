@@ -64,6 +64,10 @@ bined_converted_func <-  function(converted_data, original_data){
 
 UFT_func <- function(Data, Seed){
   set.seed(Seed)
+  # checking the data format
+  if (!is.data.frame(Data)){
+    stop("The Data is not in dataframe format")
+  }
   # Spliting the data according to their classes 
   data_splits <- Data_Classes_Split(Data)
   drops_numerical <-data_splits$numeric

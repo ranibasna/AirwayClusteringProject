@@ -13,6 +13,7 @@ library(factoextra)
 library(Rtsne)
 library(ggplot2)
 library(umap)
+library(NbClust)
 ```
 
 ## Preprocessing the dataset for the projection methods as well as scaling the data
@@ -120,6 +121,13 @@ ggplot(aes(x = X, y = Y), data = converted_umap)  + geom_point()
 ```
 
 ```{r}
+Nb_converted <- NbClust(converted_airway, distance = "euclidean", min.nc = 2,
+max.nc = 10, method = "kmeans")
+fviz_nbclust(Nb_converted)
+```
+
+
+```{r}
 set.seed(111)
 k_converted <- kmeans(converted_airway, centers = 6, nstart = 100)
 grp_k_converted <- k_converted$cluster
@@ -139,4 +147,176 @@ ggplot(aes(x = X, y = Y, color = as.factor(cluster)), data = converted_umap_df) 
     geom_point() + scale_color_brewer(palette="Dark2")
 
 ```
+
+
+
+# Train_test to validate the clustering results
+
+- we will first start with spliting the data to train and test set randomly
+- we will second apply UFT method on the train data and then cluster the data using k-means.
+- we will third split the train data agian to train and test parts and train a model (random forest) on that data.
+- we go to the orignal test data and apply UFT method then k-means clustering.
+- we use the model we trained in the previous step to predict the the labels (clusters).
+- Now we can compare between the two clusters on the original test set . we use this as a validation creteria.
+- we can apply the above program to all the methods we develop such as Gower, UFT, Treeclust, and maybe the Ensemble approachas well.
+- we can also possibly use the rando forest crafer or the model based approaches as well as the deep learning results with bootstrap.
+
+```{r}
+library(caret)
+library(e1071)
+library(mclust)
+library(clusterCrit)
+library(randomForest)
+```
+
+
+## UFT train_test validation
+
+
+- Spliting the data
+
+```{r}
+n_train <- round(0.80 * nrow(Airway2)) #80% of length of main data set as integer
+train_indices <- sample(1:nrow(Airway2), n_train) #creating a vector with random indices
+val_train <- Airway2[train_indices, ] #generating train data set (with ideces = train_indices)
+val_test <- Airway2[-train_indices, ] #generating test data set
+```
+
+- UFT Clustering for the training data
+```{r}
+val_train_airway_cate_to_num  <- UFT_func(val_train, Seed = 22)
+val_train_converted_airway <- bined_converted_func(converted_data = val_train_airway_cate_to_num, original_data = val_train)
+```
+
+- Clustering the data using k-means
+
+```{r}
+set.seed(10)
+tsne_converted_airway_val <- Rtsne(X = val_train_converted_airway,perplexity= 30, is_distance = FALSE, check_duplicates = FALSE)
+
+tsne_converted_airway_val <- tsne_converted_airway_val$Y %>%
+  data.frame() %>%
+  setNames(c("X", "Y"))
+
+ggplot(aes(x = X, y = Y), data = tsne_converted_airway_val)  + geom_point()
+```
+
+```{r}
+library(NbClust)
+Nb_converted_val_train <- NbClust(val_train_converted_airway, distance = "euclidean", min.nc = 2,
+max.nc = 10, method = "kmeans")
+fviz_nbclust(Nb_converted_val_train)
+```
+
+- Clustering with k-means
+
+```{r}
+set.seed(11)
+k_converted_airway_val_train <- kmeans(val_train_converted_airway, centers = 6, nstart = 100)
+grp_k_converted_val_train <- k_converted_airway_val_train$cluster
+table(grp_k_converted_val_train)
+```
+
+- Adding the cluster to the data
+
+```{r}
+# copying the data
+splited_train_airway_converted <- val_train_converted_airway
+splited_train_airway_converted$clusters <- as.factor(grp_k_converted_val_train)
+```
+
+
+- second spliting of the data
+
+```{r}
+n_train <- round(0.8 * nrow(splited_train_airway_converted)) #80% of length of main data set as integer
+train_indices <- sample(1:nrow(splited_train_airway_converted), n_train) #creating a vector with random indices
+split_train <- splited_train_airway_converted[train_indices, ] #generating train data set (with ideces = train_indices)
+split_train_test <- splited_train_airway_converted[-train_indices, ] #generating test data set
+```
+
+- Training the model on the train data of the second split
+
+```{r}
+# Create a Random Forest model with default parameters
+SplitRF_model_airway <- randomForest(clusters ~ ., data = split_train, importance = TRUE)
+SplitRF_model_airway
+```
+```{r}
+importance(SplitRF_model_airway, type = 1)
+```
+
+```{r}
+plot(SplitRF_model_airway, main = "Model Error by Number of Trees")
+legend(x = "right", 
+       legend = colnames(SplitRF_model_airway$err.rate),
+       fill = 1:ncol(SplitRF_model_airway$err.rate))
+```
+
+```{r}
+varImpPlot(SplitRF_model_airway, main = "Importance of Variables") #plot variance importance
+```
+
+```{r}
+# Predicting on Validation set
+predValid <- predict(SplitRF_model_airway, split_train_test, type = "prob")
+predValid_class <- predict(SplitRF_model_airway, split_train_test, type = "class")
+confusionMatrix(data = predValid_class, reference = split_train_test$clusters) 
+```
+
+- going to the orignal test data and apply UFT method then k-means clustering.
+
+```{r}
+val_test_airway_cate_to_num <- UFT_func(Data = val_test, Seed = 22)
+val_test_airway_converted <- bined_converted_func(converted_data = val_test_airway_cate_to_num, original_data = val_test)
+```
+
+- Clustering the data using k-means
+
+```{r}
+set.seed(10)
+tsne_converted_airway_val_test <- Rtsne(X = val_test_airway_converted,perplexity= 30, is_distance = FALSE, check_duplicates = FALSE)
+
+tsne_converted_airway_val_test <- tsne_converted_airway_val_test$Y %>%
+  data.frame() %>%
+  setNames(c("X", "Y"))
+ggplot(aes(x = X, y = Y), data = tsne_converted_airway_val_test)  + geom_point()
+
+tsne_converted_airway_val_test$cl <- factor(grp_k_converted_val_test)
+ggplot(tsne_converted_airway_val_test, aes(x=X, y=Y, color=cl)) + geom_point()
+```
+
+```{r}
+library(NbClust)
+Nb_converted_val_test <- NbClust(val_test_airway_converted, distance = "euclidean", min.nc = 2,
+max.nc = 10, method = "kmeans")
+fviz_nbclust(Nb_converted_val_test)
+```
+
+
+- Clustering with k-means
+
+```{r}
+#set.seed(11)
+k_converted_airway_val_test <- kmeans(val_test_airway_converted, centers = 4, nstart = 100)
+grp_k_converted_val_test <- k_converted_airway_val_test$cluster
+table(grp_k_converted_val_test)
+```
+
+
+```{r}
+predValid_class_val <- predict(SplitRF_model_airway, val_test_airway_converted, type = "class")
+adjustedRandIndex(predValid_class_val, grp_k_converted_val_test)
+
+extCriteria(as.integer(predValid_class_val), grp_k_converted_val_test, crit = "all")
+```
+
+# Another validation approach 
+- We run clustering on the data
+- we split the data to two parts train and validation
+- we split the train to two sets train and test
+- we fit a model on the train data and test it on the test set
+- we run the model on the validation part to predict the clusters
+- we compare between the prediction and the labels
+
 
