@@ -1,0 +1,7 @@
+# Ignore temporary files:
+.DS_Store
+NoteBook_Analysis/.ipynb_checkpoints/
+
+# Ignore these directories
+Intermediate/
+Original_Data/
