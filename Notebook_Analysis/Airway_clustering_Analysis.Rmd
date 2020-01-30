@@ -5,31 +5,8 @@ output: html_notebook
 
 # instaling libraries needed
 ```{r loadlib, include=FALSE}
-#mydata <- read.csv('/Users/xbasra/Documents/Data/Clustering/Data/Airway Disease Phenotyping Data Sets3/WSAS And OLIN Airway Disease Phenotyping.csv')
 mydata <- read.csv('/Users/xbasra/Documents/Data/Airway_Clustering/Original_Data/Airway Disease Phenotyping Data Sets5/WSAS And OLIN Airway Disease Phenotyping.csv')
-library("factoextra")
-library('FactoMineR')
-library('mclust')
-library("seriation")
-library("clustertend")
-library(Rtsne) 
-library(caret)
-library(dplyr)
-library(fpc)
-library(NbClust)
-library(clValid)
-library(magrittr)
-library(dplyr)
-library(tibble)
-library(tidyr)
-library(clValid)
-library(ggplot2)
-library(corrplot)
-library(caret)
-```
-
-```{r Libraries, include=FALSE}
-#library(dplyr)
+#library('FactoMineR')
 library(tidyverse)
 library(treeClust)
 library(factoextra)
@@ -78,6 +55,7 @@ ggplot(tsne_tree_distance, aes(x=X, y=Y, color=cl)) + geom_point()
 # UFT
 
 ```{r}
+set.seed(33)
 drops_numerical <-Airway_spilts$numeric
 Airway_cate <- Airway2[ , !(names(Airway2) %in% drops_numerical)]
 
