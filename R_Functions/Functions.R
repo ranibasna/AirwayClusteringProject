@@ -105,4 +105,12 @@ UFT_func <- function(Data, Seed){
   return(data_cate)
 }
 
+AirwaClusteringKmeans  <- function(original_raw_data){
+  Airway2 <- Get_Binary_data(original_raw_data)
+  Airway_cate_to_num_only_cate  <- UFT_func(Airway2, Seed = 33)
+  converted_airway <- bined_converted_func(converted_data = Airway_cate_to_num_only_cate, original_data = Airway2)
+  set.seed(111)
+  k_converted <- kmeans(converted_airway, centers = 6, nstart = 100)
+  return(k_converted)
+}
 

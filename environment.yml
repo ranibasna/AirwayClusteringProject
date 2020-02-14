@@ -1,0 +1,15 @@
+channels:
+    - conda-forge
+    - bioconda
+dependencies:
+    - r-base=3.6.1
+    - r-essentials=3.6
+    - r-factominer=1.42
+    - r-factoextra=1.0.5
+    #- rstudio=1.1.456=h04f5b5a_1
+    - tensorboard=1.5.1=py36_1
+    - tensorflow=1.5.1=py36_0
+    - keras=2.2.4=0
+    #- pandas=0.24.2=py36h0a44026_0
+    #- numpy=1.16.2=py36hbb3c62a_1
+    - matplotlib=3.0.3=py36_1

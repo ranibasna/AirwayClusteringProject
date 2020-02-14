@@ -12,7 +12,7 @@ library(treeClust)
 library(factoextra)
 library(Rtsne)
 library(ggplot2)
-library(umap)
+#library(umap)
 library(NbClust)
 ```
 
@@ -20,18 +20,14 @@ library(NbClust)
 
 ```{r}
 Airway2 <- Get_Binary_data(mydata)
-
-# scaling with caret average
-ordinalCol_Airway <- c('ever_smoker20py', 'dyspneaMRC')
-pp <- preProcess(Airway2[Airway_spilts$numeric], method = "range")
-pp1 <- preProcess(Airway2[ordinalCol_Airway], method = "range")
-scaled_Airway <- Airway2
-scaled_Airway[Airway_spilts$numeric]<- predict(pp, Airway2[Airway_spilts$numeric])
-scaled_Airway[ordinalCol_Airway] <- predict(pp1, Airway2[ordinalCol_Airway])
-# saving the data
-write.csv(Airway2, '/Users/xbasra/Documents/Data/Clustering/Results_Data_Reports/CsvData/Airway2.csv')
+# converting the binary / categorical variables to factors for presentation tabels and results perpuses 
+Airway2_f <- Airway2 %>% mutate_if(is.integer, factor)
+# saving the data Airway2_f
+write.csv(Airway2_f, '/Users/xbasra/Documents/Data/Airway_Clustering/Intermediate/Preprocessed_data/Airway2_f.csv')
+write.csv(Airway2, '/Users/xbasra/Documents/Data/Airway_Clustering/Intermediate/Preprocessed_data/Airway2.csv')
 ```
 
+# Decesion Tree distance and Hierarchical Clustering
 
 ```{r}
 # important to set a seed here
@@ -39,6 +35,13 @@ set.seed(33)
 airway.tc1 <- treeClust(Airway2, d.num = 1, control = treeClust.control(return.trees = TRUE, return.dists = TRUE))
 h_tree <- hcut(airway.tc1$dists, 6, isdiss = TRUE, hc_method = 'ward.D2')
 table(h_tree$cluster)
+```
+
+```{r}
+# 5 clusters is what mostly reported
+Nb_converted_DT <- NbClust(data = Airway2, diss = airway.tc1$dists,distance = NULL, min.nc = 4,
+max.nc = 10, method = 'ward.D2')
+fviz_nbclust(Nb_converted_DT)
 ```
 
 ```{r}
@@ -54,53 +57,15 @@ ggplot(tsne_tree_distance, aes(x=X, y=Y, color=cl)) + geom_point()
 ```
 
 # UFT
-
 ```{r}
-set.seed(33)
-drops_numerical <-Airway_spilts$numeric
-Airway_cate <- Airway2[ , !(names(Airway2) %in% drops_numerical)]
-
-Airway_cate_to_num <- Airway_cate
-m <- length(Airway_cate_to_num)
-d <- dim(Airway_cate_to_num)[1]
-for (j in 1:m) {
-  n <- length(unique(Airway_cate[,j])) 
-  S <- as.vector(as.matrix(count(Airway_cate, Airway_cate[,j], sort = TRUE)[,1])) # the unique values of variable (we did this some that the order match with count and probabilities)
-  C <- as.vector(as.matrix(count(Airway_cate, Airway_cate[,j], sort = TRUE)[,2])) # the count (number of occurance) of the values in the variable
-  P <- C/(d*1) # Probabilities
-  for (i in 1:n){
-    mu <- 0
-    L1 <- 0
-    L2 <- 1- sum(P^3)
-    L3 <- 0
-    for (h in 1:n) {
-      H <- P[h]*P[i]*(h-i)^2
-      L3 <- H + L3
-    }
-    for (k in 1:i){
-      mu1 <- sum((n-k) * P[k])
-      L1 <- L1 + mu1
-    }
-    mu <- ((n -i) - L1) * sqrt(L2/L3)
-    for (l in 1:d){
-      if (Airway_cate_to_num[l,j] == S[i]){
-        Airway_cate_to_num[l,j] <- rnorm(1,mu, P[i])
-      }
-    }
-  }
-}
-```
-
-
-```{r}
+Airway_cate_to_num_only_cate  <- UFT_func(Airway2, Seed = 33)
 converted_airway <- bined_converted_func(converted_data = Airway_cate_to_num_only_cate, original_data = Airway2)
-#write.csv(Airway_cate_to_num, '/Users/xbasra/Documents/Data/Clustering/Results_Data_Reports/CsvData/converted_UFT.csv')
+write.csv(converted_airway, '/Users/xbasra/Documents/Data/Airway_Clustering/Intermediate/Preprocessed_data/converted_airway.csv')
 ```
 
 ```{r}
 set.seed(50)
 tsne_converted <- Rtsne(X = converted_airway ,perplexity= 30, is_distance = FALSE, check_duplicates = FALSE)
-
 tsne_converted <- tsne_converted$Y %>%
   data.frame() %>%
   setNames(c("X", "Y"))
@@ -112,7 +77,6 @@ ggplot(aes(x = X, y = Y), data = tsne_converted)  + geom_point()
 ```{r}
 set.seed(14)
 converted_umap <- umap(converted_airway)
-
 converted_umap <- converted_umap$layout %>%
   data.frame() %>%
   setNames(c("X", "Y"))
@@ -121,6 +85,7 @@ ggplot(aes(x = X, y = Y), data = converted_umap)  + geom_point()
 ```
 
 ```{r}
+# 5 clusters is what mostly reported
 Nb_converted <- NbClust(converted_airway, distance = "euclidean", min.nc = 2,
 max.nc = 10, method = "kmeans")
 fviz_nbclust(Nb_converted)
@@ -133,6 +98,11 @@ k_converted <- kmeans(converted_airway, centers = 6, nstart = 100)
 grp_k_converted <- k_converted$cluster
 table(grp_k_converted)
 ```
+
+```{r}
+k_Clusters <- AirwaClusteringKmeans(original_raw_data = mydata)
+```
+
 
 ```{r}
 set.seed(222)
@@ -148,9 +118,20 @@ ggplot(aes(x = X, y = Y, color = as.factor(cluster)), data = converted_umap_df) 
 
 ```
 
+# Deeplearning with reticulate
+```{r}
+# library(reticulate)
+# #.libPaths()
+# #use_condaenv('AirwayClust')
+# use_condaenv(condaenv = 'AirwayClust', conda = "/Users/xbasra/miniconda3/envs/AirwayClust/")
+# 
+# import pandas
+# import numpy as np
+
+```
 
 
-# Train_test to validate the clustering results
+# Validation with Train_test to validate the clustering results
 
 - we will first start with spliting the data to train and test set randomly
 - we will second apply UFT method on the train data and then cluster the data using k-means.
@@ -236,7 +217,7 @@ split_train_test <- splited_train_airway_converted[-train_indices, ] #generating
 ```
 
 - Training the model on the train data of the second split
-
+## RF-model
 ```{r}
 # Create a Random Forest model with default parameters
 SplitRF_model_airway <- randomForest(clusters ~ ., data = split_train, importance = TRUE)
@@ -319,4 +300,214 @@ extCriteria(as.integer(predValid_class_val), grp_k_converted_val_test, crit = "a
 - we run the model on the validation part to predict the clusters
 - we compare between the prediction and the labels
 
+- Adding the cluster to the big main data
+## UFT
+
+```{r}
+# copying the data
+converted_airway_full <- converted_airway
+converted_airway_full$clusters <- as.factor(grp_k_converted)
+```
+
+```{r}
+n_train <- round(0.9 * nrow(converted_airway_full)) #80% of length of main data set as integer
+train_indices <- sample(1:nrow(converted_airway_full), n_train) #creating a vector with random indices
+split_train <- converted_airway_full[train_indices, ] #generating train data set (with ideces = train_indices)
+split_validate <- converted_airway_full[-train_indices, ] #generating test data set
+```
+
+- Training the model on the train data of the second split
+
+```{r}
+n_train <- round(0.9 * nrow(split_train)) #80% of length of main data set as integer
+train_indices <- sample(1:nrow(split_train), n_train) #creating a vector with random indices
+split_train_train <- split_train[train_indices, ] #generating train data set (with ideces = train_indices)
+split_train_test <- split_train[-train_indices, ] #generating test data set
+```
+
+```{r}
+# Create a Random Forest model with default parameters
+SplitRF_model_airway <- randomForest(clusters ~ ., data = split_train_train, importance = TRUE)
+SplitRF_model_airway
+```
+
+```{r}
+plot(SplitRF_model_airway, main = "Model Error by Number of Trees")
+legend(x = "right", 
+       legend = colnames(SplitRF_model_airway$err.rate),
+       fill = 1:ncol(SplitRF_model_airway$err.rate))
+```
+
+```{r}
+# Predicting on Validation set
+predValid <- predict(SplitRF_model_airway, split_train_test, type = "prob")
+predValid_class <- predict(SplitRF_model_airway, split_train_test, type = "class")
+confusionMatrix(data = predValid_class, reference = split_train_test$clusters) 
+```
+
+```{r}
+predValid_class_val <- predict(SplitRF_model_airway, split_validate %>% select(- clusters), type = "class")
+adjustedRandIndex(predValid_class_val, split_validate$clusters)
+extCriteria(as.integer(predValid_class_val), as.integer(split_validate$clusters), crit = "all")
+```
+
+
+## Dt
+```{r}
+# copying the data
+Airway2_full <- Airway2
+Airway2_full$clusters <- as.factor(h_tree$cluster)
+```
+
+```{r}
+n_train <- round(0.9 * nrow(Airway2_full)) #80% of length of main data set as integer
+train_indices <- sample(1:nrow(Airway2_full), n_train) #creating a vector with random indices
+split_train <- Airway2_full[train_indices, ] #generating train data set (with ideces = train_indices)
+split_validate <- Airway2_full[-train_indices, ] #generating test data set
+```
+
+- Training the model on the train data of the second split
+
+```{r}
+n_train <- round(0.9 * nrow(split_train)) #80% of length of main data set as integer
+train_indices <- sample(1:nrow(split_train), n_train) #creating a vector with random indices
+split_train_train <- split_train[train_indices, ] #generating train data set (with ideces = train_indices)
+split_train_test <- split_train[-train_indices, ] #generating test data set
+```
+
+```{r}
+# Create a Random Forest model with default parameters
+SplitRF_model_airway_Dt <- randomForest(clusters ~ ., data = split_train_train, importance = TRUE)
+SplitRF_model_airway_Dt
+```
+
+```{r}
+plot(SplitRF_model_airway_Dt, main = "Model Error by Number of Trees")
+legend(x = "right", 
+       legend = colnames(SplitRF_model_airway_Dt$err.rate),
+       fill = 1:ncol(SplitRF_model_airway_Dt$err.rate))
+```
+
+```{r}
+# Predicting on Validation set
+predValid <- predict(SplitRF_model_airway_Dt, split_train_test, type = "prob")
+predValid_class <- predict(SplitRF_model_airway_Dt, split_train_test, type = "class")
+confusionMatrix(data = predValid_class, reference = split_train_test$clusters) 
+```
+
+```{r}
+predValid_class_val <- predict(SplitRF_model_airway_Dt, split_validate %>% select(- clusters), type = "class")
+adjustedRandIndex(predValid_class_val, split_validate$clusters)
+extCriteria(as.integer(predValid_class_val), as.integer(split_validate$clusters), crit = "all")
+```
+
+## Deep learning DEC
+
+
+```{r}
+# copying the data
+result_airway_uft_DEC_full <- read.csv('/Users/xbasra/Documents/Data/Airway_Clustering/Intermediate/CSV_output_data/result_airway_uft_DEC.csv')
+result_airway_uft_DEC_full$cluster <- as.factor(result_airway_uft_DEC_full$cluster) 
+
+n_train <- round(0.9 * nrow(result_airway_uft_DEC_full)) #80% of length of main data set as integer
+train_indices <- sample(1:nrow(result_airway_uft_DEC_full), n_train) #creating a vector with random indices
+split_train <- result_airway_uft_DEC_full[train_indices, ] #generating train data set (with ideces = train_indices)
+split_validate <- result_airway_uft_DEC_full[-train_indices, ] #generating test data set
+```
+
+- Training the model on the train data of the second split
+
+```{r}
+n_train <- round(0.9 * nrow(split_train)) #80% of length of main data set as integer
+train_indices <- sample(1:nrow(split_train), n_train) #creating a vector with random indices
+split_train_train <- split_train[train_indices, ] #generating train data set (with ideces = train_indices)
+split_train_test <- split_train[-train_indices, ] #generating test data set
+```
+
+```{r}
+# Create a Random Forest model with default parameters
+SplitRF_model_airway_DEC <- randomForest(cluster ~ ., data = split_train_train, importance = TRUE)
+SplitRF_model_airway_DEC
+```
+
+```{r}
+plot(SplitRF_model_airway_DEC, main = "Model Error by Number of Trees")
+legend(x = "right", 
+       legend = colnames(SplitRF_model_airway_DEC$err.rate),
+       fill = 1:ncol(SplitRF_model_airway_DEC$err.rate))
+```
+
+```{r}
+# Predicting on Validation set
+predValid <- predict(SplitRF_model_airway_DEC, split_train_test, type = "prob")
+predValid_class <- predict(SplitRF_model_airway_DEC, split_train_test, type = "class")
+confusionMatrix(data = predValid_class, reference = split_train_test$cluster) 
+```
+```{r}
+ClusterPurity(predValid_class_val,split_validate$cluster)
+```
+
+```{r}
+predValid_class_val <- predict(SplitRF_model_airway_DEC, split_validate %>% select(- cluster), type = "class")
+adjustedRandIndex(predValid_class_val, split_validate$cluster)
+extCriteria(as.integer(predValid_class_val), as.integer(split_validate$cluster), crit = "all")
+```
+
+## N2D
+
+
+```{r}
+# copying the data
+result_airway_uft_n2d_full <- read.csv('/Users/xbasra/Documents/Data/Airway_Clustering/Intermediate/CSV_output_data/result_airway_uft_n2d.csv')
+result_airway_uft_n2d_full$cluster <- as.factor(result_airway_uft_n2d_full$cluster) 
+
+n_train <- round(0.9 * nrow(result_airway_uft_n2d_full)) #80% of length of main data set as integer
+train_indices <- sample(1:nrow(result_airway_uft_n2d_full), n_train) #creating a vector with random indices
+split_train <- result_airway_uft_n2d_full[train_indices, ] #generating train data set (with ideces = train_indices)
+split_validate <- result_airway_uft_n2d_full[-train_indices, ] #generating test data set
+```
+
+- Training the model on the train data of the second split
+
+```{r}
+n_train <- round(0.9 * nrow(split_train)) #80% of length of main data set as integer
+train_indices <- sample(1:nrow(split_train), n_train) #creating a vector with random indices
+split_train_train <- split_train[train_indices, ] #generating train data set (with ideces = train_indices)
+split_train_test <- split_train[-train_indices, ] #generating test data set
+```
+
+```{r}
+# Create a Random Forest model with default parameters
+SplitRF_model_airway_n2d <- randomForest(cluster ~ ., data = split_train_train, importance = TRUE)
+SplitRF_model_airway_n2d
+```
+
+```{r}
+plot(SplitRF_model_airway_n2d, main = "Model Error by Number of Trees")
+legend(x = "right", 
+       legend = colnames(SplitRF_model_airway_n2d$err.rate),
+       fill = 1:ncol(SplitRF_model_airway_n2d$err.rate))
+```
+
+```{r}
+# Predicting on Validation set
+predValid <- predict(SplitRF_model_airway_n2d, split_train_test, type = "prob")
+predValid_class <- predict(SplitRF_model_airway_n2d, split_train_test, type = "class")
+confusionMatrix(data = predValid_class, reference = split_train_test$cluster) 
+```
+
+```{r}
+ClusterPurity <- function(clusters, classes) {
+  sum(apply(table(classes, clusters), 2, max)) / length(clusters)}
+```
+```{r}
+ClusterPurity(predValid_class_val,split_validate$cluster)
+```
+
+
+```{r}
+predValid_class_val <- predict(SplitRF_model_airway_n2d, split_validate %>% select(- cluster), type = "class")
+adjustedRandIndex(predValid_class_val, split_validate$cluster)
+extCriteria(as.integer(predValid_class_val), as.integer(split_validate$cluster), crit = "all")
+```
 
