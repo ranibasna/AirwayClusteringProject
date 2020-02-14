@@ -105,15 +105,8 @@ k_Clusters <- AirwaClusteringKmeans(original_raw_data = mydata)
 
 
 ```{r}
-set.seed(222)
-converted_umap <- umap(converted_airway)
-
-converted_umap_df <- converted_umap$layout %>%
-  data.frame() %>%
-  setNames(c("X", "Y"))
-
-converted_umap_df$cluster <- grp_k_converted
-ggplot(aes(x = X, y = Y, color = as.factor(cluster)), data = converted_umap_df) +
+converted_umap$cluster <- grp_k_converted
+ggplot(aes(x = X, y = Y, color = as.factor(cluster)), data = converted_umap) +
     geom_point() + scale_color_brewer(palette="Dark2")
 
 ```
@@ -347,8 +340,12 @@ confusionMatrix(data = predValid_class, reference = split_train_test$clusters)
 
 ```{r}
 predValid_class_val <- predict(SplitRF_model_airway, split_validate %>% select(- clusters), type = "class")
-adjustedRandIndex(predValid_class_val, split_validate$clusters)
+#adjustedRandIndex(predValid_class_val, split_validate$clusters)
 extCriteria(as.integer(predValid_class_val), as.integer(split_validate$clusters), crit = "all")
+```
+
+```{r}
+ClusterPurity(predValid_class_val,split_validate$cluster)
 ```
 
 
@@ -397,12 +394,16 @@ confusionMatrix(data = predValid_class, reference = split_train_test$clusters)
 
 ```{r}
 predValid_class_val <- predict(SplitRF_model_airway_Dt, split_validate %>% select(- clusters), type = "class")
-adjustedRandIndex(predValid_class_val, split_validate$clusters)
+#adjustedRandIndex(predValid_class_val, split_validate$clusters)
 extCriteria(as.integer(predValid_class_val), as.integer(split_validate$clusters), crit = "all")
 ```
 
-## Deep learning DEC
+```{r}
+ClusterPurity(predValid_class_val,split_validate$cluster)
+```
 
+
+## Deep learning DEC
 
 ```{r}
 # copying the data
@@ -443,14 +444,14 @@ predValid <- predict(SplitRF_model_airway_DEC, split_train_test, type = "prob")
 predValid_class <- predict(SplitRF_model_airway_DEC, split_train_test, type = "class")
 confusionMatrix(data = predValid_class, reference = split_train_test$cluster) 
 ```
-```{r}
-ClusterPurity(predValid_class_val,split_validate$cluster)
-```
 
 ```{r}
 predValid_class_val <- predict(SplitRF_model_airway_DEC, split_validate %>% select(- cluster), type = "class")
-adjustedRandIndex(predValid_class_val, split_validate$cluster)
+#adjustedRandIndex(predValid_class_val, split_validate$cluster)
 extCriteria(as.integer(predValid_class_val), as.integer(split_validate$cluster), crit = "all")
+```
+```{r}
+ClusterPurity(predValid_class_val,split_validate$cluster)
 ```
 
 ## N2D
