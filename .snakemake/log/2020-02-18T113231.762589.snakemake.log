@@ -1,4 +1,0 @@
-Building DAG of jobs...
-MissingInputException in line 10 of /Users/xbasra/Documents/Data/Airway_Clustering/Snakefile:
-Missing input files for rule get_result_DEC:
-Intermediate/Preprocessed_data/converted_data.csv

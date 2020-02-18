@@ -1,3 +1,0 @@
-AttributeError in line 9 of /Users/xbasra/Documents/Data/Airway_Clustering/Snakefile:
-'Rules' object has no attribute 'get_preprocessed_famd'
-  File "/Users/xbasra/Documents/Data/Airway_Clustering/Snakefile", line 9, in <module>
