@@ -1,0 +1,30 @@
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 12
+Rules claiming more threads will be scaled down.
+Job counts:
+	count	jobs
+	1	get_converted_data
+	1	get_result_DEC
+	2
+
+[Tue Feb 18 12:11:22 2020]
+rule get_converted_data:
+    input: Original_Data/AirwayDiseasePhenotypingDataSets5/WSAS_AndOLIN_AirwayDiseasePhenotyping.csv, R_Functions/Functions.R
+    output: Results/converted_data.csv
+    jobid: 1
+
+[Tue Feb 18 12:11:25 2020]
+Finished job 1.
+1 of 2 steps (50%) done
+
+[Tue Feb 18 12:11:25 2020]
+rule get_result_DEC:
+    input: Results/converted_data.csv, Original_Data/AirwayDiseasePhenotypingDataSets5/WSAS_AndOLIN_AirwayDiseasePhenotyping.csv, Python_Functions/code.py
+    output: Results/result_airway_DEC.csv
+    jobid: 0
+
+[Tue Feb 18 12:11:40 2020]
+Finished job 0.
+2 of 2 steps (100%) done
+Complete log: /Users/xbasra/Documents/Data/Airway_Clustering/.snakemake/log/2020-02-18T121122.368727.snakemake.log

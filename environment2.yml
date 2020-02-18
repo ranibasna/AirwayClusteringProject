@@ -1,9 +1,0 @@
-channels:
-    - conda-forge
-    - bioconda
-dependencies:
-    - r-base=3.6.1
-    - r-essentials=3.6
-    - r-factominer=1.42
-    - r-factoextra=1.0.5
-    - rstudio=1.1.456=h04f5b5a_1

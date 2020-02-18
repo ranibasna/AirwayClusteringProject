@@ -1,3 +1,5 @@
+args = commandArgs(trailingOnly=TRUE)
+
 #' This is s small function the split the data according to thier types (numerica, integers or factors)
 #' @param Data is the dataframe we are spliting it's variables to different classes.
 #' @return return a list that each element contain the coloumns that belong to specific class
@@ -23,14 +25,14 @@ Get_Binary_data <- function(Data){
   # Selecting Specific Variables under the selection creteria. other_CVD all yes
   drops <- c("lopnr","kohort","urbanization","rhinitis_ever","wheeze_ever")
   Airway2 <- Data[ , !(names(Data) %in% drops)]
-  
+
   # this is only to adjust the smoking varaible to three categories Basically replacing number 0 with Never-Smoker
   Airway2 <- Airway2 %>% mutate(ever_smoker20py=replace(ever_smoker20py, ever_smoker20py==0, 'Never-smoker')) %>% as.data.frame()
   # replacing ever_Somoker variable with integer values
   Airway2$ever_smoker20py <- ifelse(Airway2$ever_smoker20py == 'Never-smoker',0, ifelse(Airway2$ever_smoker20py == '<=20 packyears',1, ifelse(Airway2$ever_smoker20py == '>20 packyears',2,0)))
   # converting the ever_somke to integer variable
   Airway2$ever_smoker20py <- as.integer(Airway2$ever_smoker20py)
-  
+
   Airway2 <- mutate(Airway2, Longstanding_cough = if_else(Longstanding_cough == "Yes", 1L, 0L),
                     Sputum_production = if_else(Sputum_production == "Yes", 1L,0L),
                     Chronic_productive_cough = if_else(Chronic_productive_cough == "Yes", 1L, 0L),
@@ -49,12 +51,12 @@ Get_Binary_data <- function(Data){
 
 
 bined_converted_func <-  function(converted_data, original_data){
-  #cbind(converted_data, original_data[data_split$numeric] %>% scale()) 
+  #cbind(converted_data, original_data[data_split$numeric] %>% scale())
   scaled_num_data <- original_data %>% select_if(is.double) %>% scale() %>% as.data.frame()
   converted_df <- cbind(converted_data, scaled_num_data)
-  
+
   #scaled_data <- original_data %>% mutate_if(is.numeric, scale)
-  #cbind(food_cate_to_num, rand_food_data2[rand_food_spilts$numeric] %>% scale()) 
+  #cbind(food_cate_to_num, rand_food_data2[rand_food_spilts$numeric] %>% scale())
 }
 
 # checks: we need to check that the data do not have a coloumn with a single value.
@@ -68,7 +70,7 @@ UFT_func <- function(Data, Seed){
   if (!is.data.frame(Data)){
     stop("The Data is not in dataframe format")
   }
-  # Spliting the data according to their classes 
+  # Spliting the data according to their classes
   data_splits <- Data_Classes_Split(Data)
   drops_numerical <-data_splits$numeric
   # droping numerical classes
@@ -77,7 +79,7 @@ UFT_func <- function(Data, Seed){
   d <- dim(data_cate)[1]
   #
   for (j in 1:m) {
-    n <- length(unique(data_cate[,j])) 
+    n <- length(unique(data_cate[,j]))
     S <- as.vector(as.matrix(dplyr::count(data_cate, data_cate[,j], sort = TRUE)[,1])) # the unique values of variable (we did this some that the order match with count and probabilities)
     C <- as.vector(as.matrix(dplyr::count(data_cate, data_cate[,j], sort = TRUE)[,2])) # the count (number of occurance) of the values in the variable
     P <- C/(d*1) # Probabilities
@@ -114,3 +116,19 @@ AirwaClusteringKmeans  <- function(original_raw_data){
   return(k_converted)
 }
 
+converted_airway_func <- function(original_raw_data){
+  Airway2 <- Get_Binary_data(original_raw_data)
+  Airway_cate_to_num_only_cate  <- UFT_func(Airway2, Seed = 33)
+  converted_airway <- bined_converted_func(converted_data = Airway_cate_to_num_only_cate, original_data = Airway2)
+  return(converted_airway)
+}
+
+library(tidyverse)
+# defining the first argument
+filename <- args[1]
+# reading the data
+airway_original_data <- read.csv(file = filename)
+# running the converted_airway_df
+converted_airway_df <- converted_airway_func(airway_original_data)
+# saving the resulted binary data
+write.csv(converted_airway_df, file = args[2])

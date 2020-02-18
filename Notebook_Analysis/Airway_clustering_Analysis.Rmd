@@ -16,6 +16,19 @@ library(ggplot2)
 library(NbClust)
 ```
 
+```{r validation libraries, include=FALSE}
+library(caret)
+library(e1071)
+library(mclust)
+library(clusterCrit)
+library(randomForest)
+```
+
+```{r}
+ClusterPurity <- function(clusters, classes) {
+  sum(apply(table(classes, clusters), 2, max)) / length(clusters)}
+```
+
 ## Preprocessing the dataset for the projection methods as well as scaling the data
 
 ```{r}
@@ -135,13 +148,7 @@ ggplot(aes(x = X, y = Y, color = as.factor(cluster)), data = converted_umap) +
 - we can apply the above program to all the methods we develop such as Gower, UFT, Treeclust, and maybe the Ensemble approachas well.
 - we can also possibly use the rando forest crafer or the model based approaches as well as the deep learning results with bootstrap.
 
-```{r}
-library(caret)
-library(e1071)
-library(mclust)
-library(clusterCrit)
-library(randomForest)
-```
+
 
 
 ## UFT train_test validation
@@ -261,7 +268,6 @@ ggplot(tsne_converted_airway_val_test, aes(x=X, y=Y, color=cl)) + geom_point()
 ```
 
 ```{r}
-library(NbClust)
 Nb_converted_val_test <- NbClust(val_test_airway_converted, distance = "euclidean", min.nc = 2,
 max.nc = 10, method = "kmeans")
 fviz_nbclust(Nb_converted_val_test)
@@ -497,10 +503,7 @@ predValid_class <- predict(SplitRF_model_airway_n2d, split_train_test, type = "c
 confusionMatrix(data = predValid_class, reference = split_train_test$cluster) 
 ```
 
-```{r}
-ClusterPurity <- function(clusters, classes) {
-  sum(apply(table(classes, clusters), 2, max)) / length(clusters)}
-```
+
 ```{r}
 ClusterPurity(predValid_class_val,split_validate$cluster)
 ```
